@@ -21,8 +21,8 @@ with st.sidebar:
     st.divider()
     
     st.subheader("⚠️ 新增买量折损")
-    pay_discount = st.slider("付费率折损 (新用户/活跃用户)", 0.3, 1.0, 0.7)
-    arppu_discount = st.slider("ARPPU 折损 (新用户/活跃用户)", 0.5, 1.0, 0.9)
+    pay_discount = st.slider("付费率折损 (新用户/活跃用户)", 0.01, 1.0, 0.7)
+    arppu_discount = st.slider("ARPPU 折损 (新用户/活跃用户)", 0.01, 1.0, 0.9)
     
     st.divider()
     
