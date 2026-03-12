@@ -16,7 +16,7 @@ st.markdown("""
     .main { background-color: #f5f7f9; }
     .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
-    """, unsafe_allow_stdio=True)
+    """, unsafe_allow_html=True)
 
 st.title("🎯 App 买量回收精细化预估工具")
 st.caption("基于 Cohort 群组分析，通过多点拟合与折损修正，科学预估 Payback Period。")
