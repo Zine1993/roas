@@ -1,108 +1,111 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
+from scipy.optimize import curve_fit
 
-# 页面配置
-st.set_page_config(page_title="App ROI 科学预估模型", layout="wide")
+st.set_page_config(page_title="高级 LTV 留存拟合工具", layout="wide")
 
-st.title("📊 移动应用回本周期 (Payback) 科学预估模型")
-st.markdown("""
-本模型通过**幂律分布**拟合留存曲线，并引入**折损系数**修正活跃用户与新增买量用户之间的数据偏差。
-""")
+# --- 1. 定义拟合函数 (幂律分布) ---
+def retention_func(t, a, b):
+    # a: 初始强度, b: 衰减速率 (通常为负)
+    return a * np.power(t, b)
 
-# --- 1. 侧边栏：参数输入 ---
+st.title("🧪 多点留存动态拟合与回收预估")
+st.markdown("请输入实测留存数据点（至少2个，最多10个）。系统将自动拟合 180 天留存曲线。")
+
+# --- 2. 侧边栏：动态点位管理 ---
 with st.sidebar:
-    st.header("🎯 核心指标输入")
-    st.subheader("活跃大盘数据 (基准)")
-    base_pay_rate = st.number_input("活跃用户付费率 (%)", value=5.0, step=0.1) / 100
-    base_arppu = st.number_input("活跃用户 ARPPU ($)", value=50.0, step=1.0)
+    st.header("📍 留存配置")
     
+    # 使用 Data Editor 让用户动态增删行
+    default_data = pd.DataFrame([
+        {"天数": 1, "留存率%": 35.0},
+        {"天数": 7, "留存率%": 12.0},
+        {"天数": 30, "留存率%": 4.5}
+    ])
+    
+    st.subheader("编辑留存点位")
+    edited_df = st.data_editor(
+        default_data,
+        num_rows="dynamic", # 允许增删行
+        column_config={
+            "天数": st.column_config.NumberColumn("天数 (Day)", min_value=1, max_value=365, step=1),
+            "留存率%": st.column_config.NumberColumn("留存率 (%)", min_value=0.0, max_value=100.0, format="%.2f")
+        },
+        hide_index=True,
+    )
+
     st.divider()
-    
-    st.subheader("⚠️ 新增买量折损")
-    pay_discount = st.slider("付费率折损 (新用户/活跃用户)", 0.1, 1.0, 0.7)
-    arppu_discount = st.slider("ARPPU 折损 (新用户/活跃用户)", 0.1, 1.0, 0.9)
-    
-    st.divider()
-    
-    st.subheader("📈 留存曲线设置 (买量实测)")
-    d1 = st.slider("D1 留存 (%)", 10, 80, 35) / 100
-    d30 = st.slider("D30 留存 (%)", 1, 30, 4) / 100
-    
-    st.divider()
-    
-    st.subheader("💰 财务与成本")
-    cpi = st.number_input("预计 CPI ($)", value=3.0, step=0.1)
-    platform_fee = st.slider("渠道分成+税收 (%)", 0, 50, 30) / 100
+    st.header("💰 经济指标")
+    cpi = st.number_input("预计 CPI ($)", value=3.0)
+    pay_rate = st.number_input("新用户付费率 (%)", value=1.5) / 100
+    arppu = st.number_input("新用户 ARPPU ($)", value=45.0)
+    margin = st.slider("渠道分成后比例 (%)", 50, 100, 70) / 100
 
-# --- 2. 核心计算逻辑 ---
+# --- 3. 核心拟合与计算 ---
+# 清理数据：排序并确保至少有两个点
+plot_df = edited_df.dropna().sort_values("天数")
+x_obs = plot_df["天数"].values
+y_obs = plot_df["留存率%"].values / 100
 
-# 2.1 留存曲线拟合 (Power Law: R = d1 * t^b)
-days = np.arange(1, 181) # 预估180天
-# 求解幂律系数 b = log(d30/d1) / log(30/1)
-b_slope = np.log(d30/d1) / np.log(30)
-retention_curve = d1 * (days**b_slope)
+if len(plot_df) < 2:
+    st.warning("⚠️ 请至少输入 2 个留存点位进行拟合。")
+    st.stop()
+elif len(plot_df) > 10:
+    st.error("❌ 最多支持 10 个点位，请删除多余行。")
+    st.stop()
 
-# 2.2 修正后的变现指标
-adj_pay_rate = base_pay_rate * pay_discount
-adj_arppu = base_arppu * arppu_discount
-daily_net_arpu = adj_pay_rate * adj_arppu * (1 - platform_fee)
+# 执行拟合
+try:
+    # p0 是初始猜测值，有助于收敛
+    popt, _ = curve_fit(retention_func, x_obs, y_obs, p0=[y_obs[0], -0.5], maxfev=5000)
+    a_fit, b_fit = popt
+except Exception as e:
+    st.error(f"拟合失败: {e}。请确保留存数据随天数增加而下降。")
+    st.stop()
 
-# 2.3 累计 LTV 计算
-daily_ltv_contrib = retention_curve * daily_net_arpu
-# 第一天单独处理或简化处理（通常第0天即下载日也有收入）
-cum_ltv = np.cumsum(daily_ltv_contrib)
+# 生成 180 天数据
+days_predict = np.arange(1, 181)
+y_predict = retention_func(days_predict, a_fit, b_fit)
 
-# 2.4 回本计算
-payback_day_idx = np.where(cum_ltv >= cpi)[0]
-payback_result = f"{payback_day_idx[0] + 1} 天" if len(payback_day_idx) > 0 else "超过 180 天"
+# 计算 LTV 和 ROI
+daily_rev = pay_rate * arppu * margin
+cum_ltv = np.cumsum(y_predict * daily_rev)
+payback_idx = np.where(cum_ltv >= cpi)[0]
+payback_day = f"{payback_idx[0] + 1} 天" if len(payback_idx) > 0 else "180天内未回本"
 
-# --- 3. 结果展示 ---
+# --- 4. 结果展示 ---
+col1, col2, col3 = st.columns(3)
+col1.metric("拟合曲线初始值 (a)", f"{a_fit*100:.1f}%")
+col2.metric("衰减斜率 (b)", f"{b_fit:.4f}")
+col3.metric("预计回本周期", payback_day)
 
-# 指标看板
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("修正后付费率", f"{adj_pay_rate*100:.2f}%")
-c2.metric("修正后 ARPPU", f"${adj_arppu:.2f}")
-c3.metric("预计回本周期", payback_result)
-c4.metric("180日 ROI", f"{(cum_ltv[-1]/cpi)*100:.1f}%")
-
-# LTV 图表
+# 绘图
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=days, y=cum_ltv, name="累计 LTV", line=dict(color='#00CC96', width=3)))
-fig.add_hline(y=cpi, line_dash="dash", line_color="#EF553B", annotation_text=f"CPI 成本 ${cpi}")
-fig.update_layout(title="LTV 回收趋势预估 (180天)", xaxis_title="天数", yaxis_title="金额 ($)", hovermode="x unified")
+# 拟合曲线
+fig.add_trace(go.Scatter(x=days_predict, y=y_predict, name="拟合 LTV 留存曲线", line=dict(color='#1f77b4', width=2)))
+# 实测点
+fig.add_trace(go.Scatter(x=x_obs, y=y_obs, mode='markers', name="实测输入点", marker=dict(size=10, color='red', symbol='x')))
+# LTV 曲线 (次坐标轴)
+fig.add_trace(go.Scatter(x=days_predict, y=cum_ltv, name="累计 LTV ($)", yaxis="y2", line=dict(color='#2ca02c', dash='dot')))
+
+fig.update_layout(
+    title="留存拟合与 LTV 增长趋势",
+    xaxis=dict(title="天数"),
+    yaxis=dict(title="留存率", tickformat=".1%"),
+    yaxis2=dict(title="累计 LTV ($)", overlaying="y", side="right"),
+    hovermode="x unified",
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+)
 st.plotly_chart(fig, use_container_width=True)
 
-# --- 4. 压力测试 (Sensitivity Analysis) ---
-st.divider()
-st.subheader("☢️ 压力测试：不同 CPI 与付费率下的回本天数")
-st.write("如果市场环境变差（CPI上升或转化下降），你的回本周期会如何变化？")
-
-# 构建矩阵
-cpi_range = [cpi * 0.8, cpi * 0.9, cpi, cpi * 1.1, cpi * 1.2]
-discount_range = [pay_discount * 0.8, pay_discount * 0.9, pay_discount, pay_discount * 1.1]
-
-matrix_data = []
-for d in discount_range:
-    row = []
-    temp_pay_rate = base_pay_rate * d
-    temp_daily_net_arpu = temp_pay_rate * adj_arppu * (1 - platform_fee)
-    temp_cum_ltv = np.cumsum(retention_curve * temp_daily_net_arpu)
-    
-    for c in cpi_range:
-        idx = np.where(temp_cum_ltv >= c)[0]
-        day = f"{idx[0] + 1}d" if len(idx) > 0 else ">180d"
-        row.append(day)
-    matrix_data.append(row)
-
-# 转为 DataFrame 展示
-sensitivity_df = pd.DataFrame(
-    matrix_data, 
-    index=[f"付费折损 {int(d*100)}%" for d in discount_range],
-    columns=[f"CPI ${c:.2f}" for c in cpi_range]
-)
-
-st.table(sensitivity_df)
-
-st.caption("注：压力测试中，ARPPU 和留存曲线保持不变，仅波动 CPI 和付费率折损系数。")
+# 压力测试表格 (简版)
+st.subheader("📑 预估明细表 (前30天)")
+report_df = pd.DataFrame({
+    "天数": days_predict[:30],
+    "拟合留存": [f"{v*100:.2f}%" for v in y_predict[:30]],
+    "单日贡献": [f"${v * daily_rev:.4f}" for v in y_predict[:30]],
+    "累计LTV": [f"${v:.2f}" for v in cum_ltv[:30]]
+})
+st.dataframe(report_df, use_container_width=True)
