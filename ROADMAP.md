@@ -6,35 +6,37 @@ Game Growth Toolkit is moving from a single Streamlit prototype toward a reusabl
 
 - [x] Document the existing retention, monetization, eCPI, LTV, and payback model
 - [x] Fix missing runtime dependencies
-- [ ] Add input validation for invalid or non-monotonic cohort points
-- [ ] Extract calculation functions from the Streamlit UI
-- [ ] Add unit tests for retention fitting, eCPI, cumulative LTV, and payback calculations
-- [ ] Add synthetic sample cohorts
-- [ ] Add an open-source license
+- [x] Add input validation for invalid or non-monotonic cohort points
+- [x] Extract calculation functions from the Streamlit UI
+- [x] Add unit tests for retention fitting, eCPI, cumulative LTV, payback, and ROAS calculations
+- [x] Add synthetic sample cohorts
+- [x] Add an open-source license
+- [x] Add pull-request CI on supported Python versions
 
 ## Milestone 0.2 — Better forecasting
 
 - [ ] Compare power-law, exponential, and logarithmic retention models
-- [ ] Report goodness-of-fit metrics
+- [x] Report goodness-of-fit metrics
 - [ ] Add confidence intervals or scenario bands
-- [ ] Add D7 / D14 / D30 / D60 / D90 / D180 ROAS outputs
+- [x] Add D7 / D14 / D30 / D60 / D90 / D180 ROAS outputs
 - [ ] Add payer conversion timing and repeat-purchase assumptions
 - [ ] Support ad-revenue scenarios
 
 ## Milestone 0.3 — Real growth workflows
 
-- [ ] CSV cohort import
+- [x] CSV cohort import
 - [ ] Import templates for common MMP / store exports
 - [ ] Country comparison
 - [ ] Channel comparison
 - [ ] CPI break-even calculator
 - [ ] Sensitivity analysis for CPI, retention, payer rate, and ARPPU
-- [ ] Exportable HTML/CSV reports
+- [ ] Exportable HTML reports
+- [x] Exportable forecast CSV
 
 ## Milestone 0.4 — Reusable analytics layer
 
-- [ ] Separate core Python package from the Streamlit application
-- [ ] Public calculation API
+- [x] Separate core Python calculations from the Streamlit application
+- [ ] Package-style public calculation API
 - [ ] Notebook examples
 - [ ] Reproducible benchmark datasets
 - [ ] Contributor documentation for adding new models
