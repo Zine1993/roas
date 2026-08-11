@@ -173,3 +173,144 @@ def roas_checkpoints(
         if day <= ltv.size:
             result[int(day)] = float(ltv[day - 1] / ecpi)
     return result
+
+
+def break_even_paid_cpi(
+    cumulative_ltv_values: Sequence[float],
+    organic_lift: float,
+    checkpoints: Sequence[int] = (30, 90, 180),
+) -> dict[int, float]:
+    """Return the maximum paid CPI that breaks even at each checkpoint.
+
+    Because ``eCPI = paid_CPI / (1 + organic_lift)``, the paid CPI that
+    corresponds to 100% ROAS at a checkpoint is cumulative LTV multiplied
+    by ``1 + organic_lift``.
+    """
+    if organic_lift < 0:
+        raise ValueError("Organic lift cannot be negative.")
+
+    ltv = np.asarray(cumulative_ltv_values, dtype=float)
+    if ltv.size == 0:
+        raise ValueError("Cumulative LTV cannot be empty.")
+    if not np.all(np.isfinite(ltv)) or np.any(ltv < 0):
+        raise ValueError("Cumulative LTV must contain finite non-negative values.")
+
+    result: dict[int, float] = {}
+    for day in checkpoints:
+        if day < 1:
+            raise ValueError("Break-even checkpoint days must be at least 1.")
+        if day <= ltv.size:
+            result[int(day)] = float(ltv[day - 1] * (1.0 + organic_lift))
+    return result
+
+
+def scenario_metrics(
+    retention_curve: Sequence[float],
+    cpi: float,
+    organic_lift: float,
+    payer_rate: float,
+    arppu: float,
+    platform_cut: float,
+    checkpoints: Sequence[int] = (30, 90, 180),
+) -> dict[str, object]:
+    """Calculate payback and ROAS metrics for one deterministic scenario."""
+    ecpi = effective_cpi(cpi, organic_lift)
+    ltv = cumulative_ltv(retention_curve, payer_rate, arppu, platform_cut)
+    return {
+        "ecpi": ecpi,
+        "payback_day": find_payback_day(ltv, ecpi),
+        "roas": roas_checkpoints(ltv, ecpi, checkpoints=checkpoints),
+        "cumulative_ltv": ltv,
+    }
+
+
+def one_way_sensitivity(
+    retention_curve: Sequence[float],
+    base_cpi: float,
+    organic_lift: float,
+    base_payer_rate: float,
+    base_arppu: float,
+    platform_cut: float,
+    cpi_range: float,
+    payer_rate_range: float,
+    arppu_range: float,
+    checkpoints: Sequence[int] = (30, 90, 180),
+) -> list[dict[str, object]]:
+    """Build a low/base/high one-way sensitivity table.
+
+    Range values are fractional deviations from the baseline, e.g. ``0.2``
+    means +/-20%. Only one assumption changes at a time, which keeps the
+    scenario table interpretable and avoids implying probabilistic certainty.
+    """
+    for name, value in (
+        ("CPI range", cpi_range),
+        ("Payer-rate range", payer_rate_range),
+        ("ARPPU range", arppu_range),
+    ):
+        if not 0 <= value < 1:
+            raise ValueError(f"{name} must be at least 0 and less than 1.")
+
+    if not 0 <= base_payer_rate <= 1:
+        raise ValueError("Base payer rate must be between 0 and 1.")
+    if base_arppu < 0:
+        raise ValueError("Base ARPPU cannot be negative.")
+
+    scenarios: list[tuple[str, str, float, float, float]] = [
+        ("Baseline", "Base", base_cpi, base_payer_rate, base_arppu),
+        ("CPI", "Low", base_cpi * (1.0 - cpi_range), base_payer_rate, base_arppu),
+        ("CPI", "High", base_cpi * (1.0 + cpi_range), base_payer_rate, base_arppu),
+        (
+            "Payer rate",
+            "Low",
+            base_cpi,
+            max(0.0, base_payer_rate * (1.0 - payer_rate_range)),
+            base_arppu,
+        ),
+        (
+            "Payer rate",
+            "High",
+            base_cpi,
+            min(1.0, base_payer_rate * (1.0 + payer_rate_range)),
+            base_arppu,
+        ),
+        (
+            "ARPPU",
+            "Low",
+            base_cpi,
+            base_payer_rate,
+            base_arppu * (1.0 - arppu_range),
+        ),
+        (
+            "ARPPU",
+            "High",
+            base_cpi,
+            base_payer_rate,
+            base_arppu * (1.0 + arppu_range),
+        ),
+    ]
+
+    rows: list[dict[str, object]] = []
+    for metric, scenario, scenario_cpi, payer_rate, arppu in scenarios:
+        metrics = scenario_metrics(
+            retention_curve=retention_curve,
+            cpi=scenario_cpi,
+            organic_lift=organic_lift,
+            payer_rate=payer_rate,
+            arppu=arppu,
+            platform_cut=platform_cut,
+            checkpoints=checkpoints,
+        )
+        row: dict[str, object] = {
+            "Metric": metric,
+            "Scenario": scenario,
+            "CPI": float(scenario_cpi),
+            "PayerRate": float(payer_rate),
+            "ARPPU": float(arppu),
+            "eCPI": float(metrics["ecpi"]),
+            "PaybackDay": metrics["payback_day"],
+        }
+        for day, ratio in metrics["roas"].items():
+            row[f"D{day}ROAS"] = float(ratio)
+        rows.append(row)
+
+    return rows
