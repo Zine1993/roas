@@ -5,13 +5,15 @@
 
 Open-source growth analytics for mobile apps and games.
 
-Game Growth Toolkit helps independent developers, UA teams, and growth analysts turn early cohort signals into transparent acquisition and payback scenarios. The current Streamlit app focuses on retention-curve fitting, monetization adjustments, effective CPI, LTV forecasting, and ROAS/payback estimation through Day 180.
+Game Growth Toolkit helps independent developers, UA teams, and growth analysts turn early cohort signals into transparent acquisition and payback scenarios. The current Streamlit app focuses on retention-curve fitting, monetization adjustments, effective CPI, LTV forecasting, break-even CPI, sensitivity analysis, and ROAS/payback estimation through Day 180.
 
 ## Why this project exists
 
 Early-stage teams often have incomplete cohort data but still need to answer practical questions:
 
 - Is this CPI sustainable?
+- What is the highest CPI I can pay and still break even by D30, D90, or D180?
+- Which assumption hurts the forecast most: CPI, payer rate, or ARPPU?
 - What happens if new-user payer rate is weaker than the mature-user average?
 - How much does organic uplift change effective acquisition cost?
 - When does a cohort break even?
@@ -33,7 +35,9 @@ Commercial analytics suites can be expensive or too heavy for small teams. This 
 - Forecast cumulative LTV
 - Estimate payback day
 - Report D7 / D14 / D30 / D60 / D90 / D180 ROAS
-- Export the full 180-day forecast to CSV
+- Calculate D30 / D90 / D180 break-even paid CPI
+- Run one-way low/base/high sensitivity for CPI, payer rate, and ARPPU
+- Export the full 180-day forecast and sensitivity scenarios to CSV
 - Reusable Python calculation layer in `core.py`
 - Unit tests and GitHub Actions CI on Python 3.11 and 3.12
 
@@ -102,6 +106,22 @@ eCPI = CPI / (1 + organic_lift)
 
 Daily net revenue is estimated from payer rate, ARPPU, retention, and platform share. Cumulative LTV is compared with eCPI to estimate payback day and checkpoint ROAS.
 
+### 5. Break-even paid CPI
+
+At a target day, 100% ROAS means cumulative LTV equals eCPI. With organic lift, the maximum paid CPI is:
+
+```text
+break_even_paid_CPI(day) = cumulative_LTV(day) * (1 + organic_lift)
+```
+
+The app reports this at D30, D90, and D180 so acquisition teams can compare current CPI with the model's implied ceiling.
+
+### 6. Sensitivity analysis
+
+The sensitivity view changes one assumption at a time around the baseline. Users choose +/- ranges for CPI, payer rate, and ARPPU, and the toolkit recalculates payback plus D30/D90/D180 ROAS for low/base/high scenarios.
+
+This is deterministic one-way scenario analysis. It is intentionally not presented as a probability distribution or confidence interval.
+
 ## Reusable calculation layer
 
 The forecasting logic is separated from Streamlit in [`core.py`](core.py). Current public functions cover:
@@ -112,6 +132,9 @@ The forecasting logic is separated from Streamlit in [`core.py`](core.py). Curre
 - cumulative LTV
 - payback day
 - ROAS checkpoints
+- break-even paid CPI
+- deterministic scenario metrics
+- one-way sensitivity analysis
 
 This makes the model easier to test and provides a base for future notebooks, scripts, and APIs.
 
@@ -121,7 +144,7 @@ This is a planning and scenario-analysis tool, not a production attribution syst
 
 The current model intentionally stays simple and interpretable. Real-world LTV can differ materially because of payer conversion timing, repeat purchase behavior, ad revenue, whales, refunds, taxes, regional mix, campaign mix, reactivation, attribution windows, and changes in acquisition quality.
 
-A high R² only describes fit to the supplied retention points; it does not guarantee that the Day-180 extrapolation is correct.
+A high R² only describes fit to the supplied retention points; it does not guarantee that the Day-180 extrapolation is correct. One-way sensitivity shows directional exposure to selected assumptions but does not model correlated inputs or statistical uncertainty.
 
 Do not use the output as financial or investment advice.
 
@@ -130,8 +153,7 @@ Do not use the output as financial or investment advice.
 See [ROADMAP.md](ROADMAP.md). Near-term priorities now include:
 
 - compare power-law, exponential, and logarithmic retention models
-- confidence/scenario bands
-- CPI break-even and sensitivity analysis
+- confidence/scenario bands and retention sensitivity
 - payer conversion timing and repeat-purchase assumptions
 - country/channel comparison
 - import templates for common MMP exports
@@ -153,7 +175,7 @@ Useful contribution areas include modeling, validation, UX, documentation, sampl
 
 ## Release status
 
-The project is under active redevelopment from an internal growth-modeling prototype into a reusable open-source toolkit. See [CHANGELOG.md](CHANGELOG.md) for the current unreleased milestone. The first tagged release is planned as `v0.1.0` after the open-source readiness changes are reviewed and merged.
+The reproducible open-source baseline has been merged to `main`. A tagged `v0.1.0` release is still pending; ongoing work is documented in [CHANGELOG.md](CHANGELOG.md) and public issues.
 
 ## License
 
