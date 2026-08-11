@@ -1,0 +1,73 @@
+name: Bug report
+description: Report a reproducible problem in the app, model, import, or output.
+title: "[Bug]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Game Growth Toolkit. Please use synthetic, anonymized, or aggregated data only.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Installation / startup
+        - Retention input / fitting
+        - Monetization assumptions
+        - Payback / ROAS
+        - Break-even CPI
+        - Sensitivity analysis
+        - CSV import / export
+        - UI / visualization
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior and what you expected instead.
+      placeholder: "Expected... Actual..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal steps to reproduce
+      placeholder: |
+        1. Start the app with...
+        2. Enter/import...
+        3. Change...
+        4. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Synthetic or anonymized example data
+      description: Paste the smallest shareable cohort/assumptions that reproduce the problem. Never post proprietary or user-level data.
+      render: text
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.11.x"
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "macOS 15 / Ubuntu 24.04 / Windows 11"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error message or logs
+      render: shell
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Data check
+      options:
+        - label: I have removed credentials, advertising IDs, user-level data, and proprietary exports.
+          required: true

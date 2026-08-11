@@ -3,43 +3,44 @@
 [![Tests](https://github.com/Zine1993/roas/actions/workflows/tests.yml/badge.svg)](https://github.com/Zine1993/roas/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Open-source growth analytics for mobile apps and games.
+> **Turn a few early cohort points into payback, ROAS, and break-even CPI — locally, transparently, and without a proprietary analytics stack.**
 
-Game Growth Toolkit helps independent developers, UA teams, and growth analysts turn early cohort signals into transparent acquisition and payback scenarios. The current Streamlit app focuses on retention-curve fitting, monetization adjustments, effective CPI, LTV forecasting, break-even CPI, sensitivity analysis, and ROAS/payback estimation through Day 180.
+Game Growth Toolkit is an open-source scenario-planning app for **mobile game/app developers, UA teams, and growth analysts**. Give it early retention data plus monetization and acquisition assumptions; it fits a retention curve and shows what those assumptions imply through Day 180.
 
-## Why this project exists
+**Use it to answer questions like:**
 
-Early-stage teams often have incomplete cohort data but still need to answer practical questions:
+- Is a $3 CPI sustainable for this cohort?
+- What is the highest paid CPI I can afford and still reach 100% ROAS by D30, D90, or D180?
+- When does this cohort pay back?
+- What do D7 / D14 / D30 / D60 / D90 / D180 ROAS look like?
+- Does CPI, payer rate, or ARPPU matter most to the outcome?
+- How much should I trust the retention fit behind the forecast?
 
-- Is this CPI sustainable?
-- What is the highest CPI I can pay and still break even by D30, D90, or D180?
-- Which assumption hurts the forecast most: CPI, payer rate, or ARPPU?
-- What happens if new-user payer rate is weaker than the mature-user average?
-- How much does organic uplift change effective acquisition cost?
-- When does a cohort break even?
-- What do D7, D14, D30, D60, D90, and D180 ROAS look like under the same assumptions?
-- How trustworthy is the retention fit behind the forecast?
+## 60-second demo
 
-Commercial analytics suites can be expensive or too heavy for small teams. This project aims to provide a transparent, inspectable, self-hosted alternative for scenario modeling.
+Start with a tiny cohort CSV:
 
-## Current features
+```csv
+Day,Rate%
+1,35.0
+3,22.0
+7,12.0
+14,7.5
+30,4.5
+```
 
-- Fit a decaying power-law retention curve from observed cohort points
-- Validate duplicate, invalid, and non-monotonic retention inputs
-- Forecast retention through Day 180
-- Report fit quality with R²
-- Import cohort points from CSV
-- Adjust payer rate and ARPPU for new-user monetization discounts
-- Model organic uplift and platform/distribution share
-- Estimate effective CPI (eCPI)
-- Forecast cumulative LTV
-- Estimate payback day
-- Report D7 / D14 / D30 / D60 / D90 / D180 ROAS
-- Calculate D30 / D90 / D180 break-even paid CPI
-- Run one-way low/base/high sensitivity for CPI, payer rate, and ARPPU
-- Export the full 180-day forecast and sensitivity scenarios to CSV
-- Reusable Python calculation layer in `core.py`
-- Unit tests and GitHub Actions CI on Python 3.11 and 3.12
+Using the app's default **synthetic** assumptions — $3 paid CPI, 20% organic lift, 5% mature payer rate, 0.5x new-user payer multiplier, $50 mature ARPPU, 0.8x new-user ARPPU multiplier, and 30% platform cut — the model currently produces approximately:
+
+| Output | Synthetic example |
+| --- | ---: |
+| Retention fit R² | 0.986 |
+| D30 ROAS | 87.5% |
+| Estimated payback | Day 39 |
+| D90 ROAS | 154.0% |
+| D180 ROAS | 216.8% |
+| D180 break-even paid CPI | $6.50 |
+
+These numbers are **not benchmarks and not promises**. They only demonstrate how the toolkit turns explicit assumptions into a reproducible scenario. Replace the sample data and assumptions with your own aggregated cohort inputs.
 
 ## Quick start
 
@@ -52,26 +53,49 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Run tests
+Then open the local Streamlit URL, import a cohort CSV or use the bundled sample, and adjust the assumptions.
 
-```bash
-python -m unittest discover -s tests -v
-```
+A synthetic example is included at [`examples/sample_cohort.csv`](examples/sample_cohort.csv).
 
-## Cohort CSV format
+## What you get
 
-Use a CSV with `Day` and `Rate%` columns:
+### Retention
 
-```csv
-Day,Rate%
-1,35.0
-3,22.0
-7,12.0
-14,7.5
-30,4.5
-```
+- fit a decaying power-law curve from observed cohort points
+- validate duplicate, invalid, and non-monotonic inputs
+- forecast retention through Day 180
+- show fit quality with R²
+- import `Day,Rate%` cohort CSVs
 
-A synthetic example is included at [`examples/sample_cohort.csv`](examples/sample_cohort.csv). The Streamlit app can also download the same sample directly.
+### Monetization & acquisition
+
+- apply separate mature-user and new-user payer/ARPPU assumptions
+- model organic lift and platform/distribution share
+- calculate effective CPI (eCPI)
+- forecast cumulative LTV and payback day
+
+### Decision outputs
+
+- D7 / D14 / D30 / D60 / D90 / D180 ROAS
+- D30 / D90 / D180 break-even paid CPI
+- one-way low/base/high sensitivity for CPI, payer rate, and ARPPU
+- forecast and sensitivity CSV exports
+
+### Engineering quality
+
+- reusable calculation layer in [`core.py`](core.py)
+- deterministic model functions separated from Streamlit UI
+- unit tests
+- GitHub Actions CI on Python 3.11 and 3.12
+- MIT licensed
+
+## Why this exists
+
+Early-stage teams often need to make UA decisions before they have months of mature cohort data. The usual alternatives are a spreadsheet full of hidden assumptions or an analytics suite that may be too expensive, too heavy, or too opaque for the question at hand.
+
+Game Growth Toolkit aims to sit in the middle: **small enough to inspect, practical enough to use, and explicit enough to challenge.**
+
+It is deliberately not an attribution platform. It does not reconcile installs across ad networks, ingest user-level events, or claim to know a "true" LTV. It turns the assumptions you provide into a transparent scenario so you can reason about acquisition decisions.
 
 ## How the model works
 
@@ -83,99 +107,78 @@ Observed retention points are fit with a power-law curve:
 R(t) = a * t^b
 ```
 
-The fit is constrained to a non-increasing curve and projected to Day 180. R² is reported so users can see how well the fitted curve explains the observed cohort points.
+The fit is constrained to a non-increasing curve and projected to Day 180. R² describes how well the curve explains the supplied points; it does **not** guarantee long-horizon forecast accuracy.
 
 ### 2. Monetization
 
-The app starts with mature active-user payer rate and ARPPU, then applies explicit discount factors for newly acquired users:
-
 ```text
-new_user_payer_rate = active_payer_rate * payer_discount
-new_user_arppu = active_arppu * arppu_discount
+new_user_payer_rate = active_payer_rate * payer_multiplier
+new_user_arppu = active_arppu * arppu_multiplier
 ```
+
+Daily net revenue is estimated from retained users, payer rate, ARPPU, and platform share.
 
 ### 3. Acquisition cost
 
-Organic uplift is converted into an effective CPI:
-
 ```text
-eCPI = CPI / (1 + organic_lift)
+eCPI = paid_CPI / (1 + organic_lift)
 ```
 
-### 4. LTV, payback, and ROAS
+### 4. Payback and ROAS
 
-Daily net revenue is estimated from payer rate, ARPPU, retention, and platform share. Cumulative LTV is compared with eCPI to estimate payback day and checkpoint ROAS.
+Cumulative LTV is compared with eCPI to estimate payback day and checkpoint ROAS.
 
 ### 5. Break-even paid CPI
 
-At a target day, 100% ROAS means cumulative LTV equals eCPI. With organic lift, the maximum paid CPI is:
+At a target day, 100% ROAS means cumulative LTV equals eCPI:
 
 ```text
 break_even_paid_CPI(day) = cumulative_LTV(day) * (1 + organic_lift)
 ```
 
-The app reports this at D30, D90, and D180 so acquisition teams can compare current CPI with the model's implied ceiling.
+### 6. Sensitivity
 
-### 6. Sensitivity analysis
+The sensitivity view changes **one input at a time** around the baseline and recalculates payback plus D30 / D90 / D180 ROAS. It is deterministic scenario analysis, not a probability distribution or confidence interval.
 
-The sensitivity view changes one assumption at a time around the baseline. Users choose +/- ranges for CPI, payer rate, and ARPPU, and the toolkit recalculates payback plus D30/D90/D180 ROAS for low/base/high scenarios.
+## Run tests
 
-This is deterministic one-way scenario analysis. It is intentionally not presented as a probability distribution or confidence interval.
-
-## Reusable calculation layer
-
-The forecasting logic is separated from Streamlit in [`core.py`](core.py). Current public functions cover:
-
-- retention validation
-- power-law fitting
-- eCPI
-- cumulative LTV
-- payback day
-- ROAS checkpoints
-- break-even paid CPI
-- deterministic scenario metrics
-- one-way sensitivity analysis
-
-This makes the model easier to test and provides a base for future notebooks, scripts, and APIs.
+```bash
+python -m unittest discover -s tests -v
+```
 
 ## Important limitations
 
 This is a planning and scenario-analysis tool, not a production attribution system or a substitute for cohort-level revenue data.
 
-The current model intentionally stays simple and interpretable. Real-world LTV can differ materially because of payer conversion timing, repeat purchase behavior, ad revenue, whales, refunds, taxes, regional mix, campaign mix, reactivation, attribution windows, and changes in acquisition quality.
-
-A high R² only describes fit to the supplied retention points; it does not guarantee that the Day-180 extrapolation is correct. One-way sensitivity shows directional exposure to selected assumptions but does not model correlated inputs or statistical uncertainty.
+Real-world LTV can differ materially because of payer conversion timing, repeat purchases, ad revenue, whales, refunds, taxes, regional mix, campaign mix, reactivation, attribution windows, and changes in acquisition quality. A high R² only describes fit to the supplied retention points. One-way sensitivity does not model correlated inputs or statistical uncertainty.
 
 Do not use the output as financial or investment advice.
 
-## Roadmap
+## Roadmap & open work
 
-See [ROADMAP.md](ROADMAP.md). Near-term priorities now include:
+The next public work is intentionally visible in Issues:
 
-- compare power-law, exponential, and logarithmic retention models
-- confidence/scenario bands and retention sensitivity
-- payer conversion timing and repeat-purchase assumptions
-- country/channel comparison
-- import templates for common MMP exports
-- notebooks and a package-style public API
+- [#2 — Compare retention models and expose model-selection evidence](https://github.com/Zine1993/roas/issues/2)
+- [#4 — Add cohort import templates for common mobile measurement exports](https://github.com/Zine1993/roas/issues/4)
+- [#5 — Model payer conversion timing and repeat purchases](https://github.com/Zine1993/roas/issues/5)
+
+See [ROADMAP.md](ROADMAP.md) for the longer roadmap.
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, issue, and pull-request guidance.
+Contributions and real-world workflow feedback are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Useful contribution areas include modeling, validation, UX, documentation, sample datasets, and connectors/templates for common mobile measurement exports.
+If you use Singular, AppsFlyer, Adjust, store analytics, or your own cohort exports, the most useful feedback is often not "add more AI" — it is **which input format, forecast assumption, or decision output makes the current workflow annoying**.
 
-## Project principles
+Please use synthetic, anonymized, or aggregated data in public issues.
 
-1. **Transparent assumptions** — every output should be explainable.
-2. **Useful with small datasets** — independent developers should be able to use it early.
-3. **No vendor lock-in** — local and self-hostable by default.
-4. **Evidence over magic** — models expose fit quality, caveats, and uncertainty as the project matures.
-5. **Practical growth workflows** — prioritize questions UA and product teams actually need to answer.
+## Launch status
 
-## Release status
+The open-source baseline and break-even/sensitivity workflow are merged to `main`. The repository is being prepared for its first tagged public milestone, `v0.1.0`.
 
-The reproducible open-source baseline has been merged to `main`. A tagged `v0.1.0` release is still pending; ongoing work is documented in [CHANGELOG.md](CHANGELOG.md) and public issues.
+See [`docs/RELEASE_NOTES_v0.1.0.md`](docs/RELEASE_NOTES_v0.1.0.md) for prepared release notes and [`docs/LAUNCH_KIT.md`](docs/LAUNCH_KIT.md) for launch/community copy.
+
+If this replaces even one awkward spreadsheet for you, a ⭐ helps signal that this workflow is worth continuing — and an Issue describing what is missing is even more useful.
 
 ## License
 
