@@ -1,0 +1,60 @@
+name: Growth workflow / feature request
+description: Propose an import, model, output, or workflow that would make the toolkit more useful.
+title: "[Feature]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The best requests start from a real decision or workflow, not a technology. Tell us what you are trying to decide or replace.
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Cohort import / data preparation
+        - Retention modeling
+        - Monetization modeling
+        - ROAS / payback output
+        - Break-even / sensitivity
+        - Country / channel comparison
+        - Export / reporting
+        - Developer API / notebook
+        - UI / usability
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: What workflow are you trying to improve?
+      description: Describe what you do today and where the friction is.
+      placeholder: "Today I export..., reshape it in..., then calculate..."
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: What decision should the toolkit help you make?
+      placeholder: "For example: decide the maximum CPI for a country before scaling spend."
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: What input data do you already have?
+      description: Describe columns/aggregation level using synthetic examples only.
+  - type: textarea
+    id: output
+    attributes:
+      label: What output would be actionable?
+      placeholder: "For example: a country-by-country break-even CPI table at D90."
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Data check
+      options:
+        - label: I will use only synthetic, anonymized, or aggregated examples in public discussion.
+          required: true
