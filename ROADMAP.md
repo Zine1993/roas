@@ -28,10 +28,12 @@ Game Growth Toolkit is moving from a single Streamlit prototype toward a reusabl
 - [ ] Import templates for common MMP / store exports — #4
 - [ ] Country comparison
 - [ ] Channel comparison
-- [ ] CPI break-even calculator — #3
-- [ ] Sensitivity analysis for CPI, retention, payer rate, and ARPPU — #3
+- [x] CPI break-even calculator — #3
+- [x] One-way sensitivity analysis for CPI, payer rate, and ARPPU — #3
+- [ ] Retention sensitivity / scenario bands — follow-up to #2
 - [ ] Exportable HTML reports
 - [x] Exportable forecast CSV
+- [x] Exportable sensitivity CSV
 
 ## Milestone 0.4 — Reusable analytics layer
 
