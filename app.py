@@ -6,10 +6,12 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from core import (
+    break_even_paid_cpi,
     cumulative_ltv,
     effective_cpi,
     find_payback_day,
     fit_power_law_retention,
+    one_way_sensitivity,
     roas_checkpoints,
 )
 
@@ -55,8 +57,13 @@ with st.expander("Model assumptions and limitations"):
         """
     )
 
-tab_ret, tab_mon, tab_roi = st.tabs(
-    ["👥 1. Retention", "💰 2. Monetization", "📊 3. Payback & ROAS"]
+tab_ret, tab_mon, tab_roi, tab_sens = st.tabs(
+    [
+        "👥 1. Retention",
+        "💰 2. Monetization",
+        "📊 3. Payback & ROAS",
+        "🧪 4. Break-even & Sensitivity",
+    ]
 )
 
 fit = None
@@ -236,6 +243,11 @@ with tab_roi:
         )
         payback = find_payback_day(cum_ltv, ecpi)
         roas = roas_checkpoints(cum_ltv, ecpi)
+        break_even = break_even_paid_cpi(
+            cum_ltv,
+            organic_lift_pct / 100.0,
+            checkpoints=(30, 90, 180),
+        )
 
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Effective CPI", f"${ecpi:.2f}")
@@ -253,6 +265,31 @@ with tab_roi:
         ]
         st.subheader("ROAS checkpoints")
         st.dataframe(pd.DataFrame(roas_rows), hide_index=True, use_container_width=True)
+
+        break_even_rows = [
+            {
+                "Checkpoint": f"D{day}",
+                "Break-even paid CPI": value,
+                "Headroom vs current CPI": (value / cpi) - 1.0,
+            }
+            for day, value in break_even.items()
+        ]
+        break_even_df = pd.DataFrame(break_even_rows)
+        st.subheader("Break-even paid CPI")
+        st.caption(
+            "Maximum paid CPI that would produce 100% ROAS at each checkpoint, "
+            "including the current organic-lift assumption."
+        )
+        st.dataframe(
+            break_even_df.style.format(
+                {
+                    "Break-even paid CPI": "${:.2f}",
+                    "Headroom vs current CPI": "{:+.1%}",
+                }
+            ),
+            hide_index=True,
+            use_container_width=True,
+        )
 
         fig_roi = go.Figure()
         fig_roi.add_trace(
@@ -288,6 +325,125 @@ with tab_roi:
             "Download forecast CSV",
             data=report_df.to_csv(index=False),
             file_name="growth_forecast.csv",
+            mime="text/csv",
+        )
+
+with tab_sens:
+    st.header("Break-even and one-way sensitivity")
+    st.caption(
+        "Change one assumption at a time around the baseline to see which inputs "
+        "have the largest impact. This is deterministic scenario analysis, not a probability model."
+    )
+
+    if fit is None:
+        st.warning("A valid retention fit is required before sensitivity analysis can be calculated.")
+    else:
+        r1, r2, r3 = st.columns(3)
+        with r1:
+            cpi_range_pct = st.slider(
+                "CPI range (±%)",
+                min_value=0,
+                max_value=90,
+                value=20,
+                step=5,
+            )
+        with r2:
+            payer_range_pct = st.slider(
+                "Payer-rate range (±%)",
+                min_value=0,
+                max_value=90,
+                value=20,
+                step=5,
+            )
+        with r3:
+            arppu_range_pct = st.slider(
+                "ARPPU range (±%)",
+                min_value=0,
+                max_value=90,
+                value=20,
+                step=5,
+            )
+
+        sensitivity_rows = one_way_sensitivity(
+            retention_curve=fit.forecast,
+            base_cpi=cpi,
+            organic_lift=organic_lift_pct / 100.0,
+            base_payer_rate=new_user_payer_rate,
+            base_arppu=new_user_arppu,
+            platform_cut=platform_cut_pct / 100.0,
+            cpi_range=cpi_range_pct / 100.0,
+            payer_rate_range=payer_range_pct / 100.0,
+            arppu_range=arppu_range_pct / 100.0,
+            checkpoints=(30, 90, 180),
+        )
+
+        sensitivity_df = pd.DataFrame(sensitivity_rows)
+        display_df = sensitivity_df.copy()
+        display_df["Scenario"] = display_df["Metric"] + " · " + display_df["Scenario"]
+        display_df["Payer rate"] = display_df["PayerRate"] * 100
+        display_df["D30 ROAS"] = display_df["D30ROAS"] * 100
+        display_df["D90 ROAS"] = display_df["D90ROAS"] * 100
+        display_df["D180 ROAS"] = display_df["D180ROAS"] * 100
+        display_df["Payback"] = display_df["PaybackDay"].apply(
+            lambda value: f"Day {int(value)}" if pd.notna(value) else "180+ days"
+        )
+        display_df = display_df[
+            [
+                "Scenario",
+                "CPI",
+                "Payer rate",
+                "ARPPU",
+                "Payback",
+                "D30 ROAS",
+                "D90 ROAS",
+                "D180 ROAS",
+            ]
+        ]
+
+        st.dataframe(
+            display_df.style.format(
+                {
+                    "CPI": "${:.2f}",
+                    "Payer rate": "{:.2f}%",
+                    "ARPPU": "${:.2f}",
+                    "D30 ROAS": "{:.1f}%",
+                    "D90 ROAS": "{:.1f}%",
+                    "D180 ROAS": "{:.1f}%",
+                }
+            ),
+            hide_index=True,
+            use_container_width=True,
+        )
+
+        fig_sens = go.Figure()
+        fig_sens.add_trace(
+            go.Bar(
+                x=display_df["Scenario"],
+                y=display_df["D180 ROAS"],
+                name="D180 ROAS",
+            )
+        )
+        fig_sens.add_hline(
+            y=100,
+            line_dash="dash",
+            annotation_text="100% ROAS",
+        )
+        fig_sens.update_layout(
+            title="D180 ROAS sensitivity",
+            xaxis_title="Scenario",
+            yaxis_title="D180 ROAS (%)",
+            height=460,
+        )
+        st.plotly_chart(fig_sens, use_container_width=True)
+
+        export_df = sensitivity_df.copy()
+        export_df["PayerRate%"] = export_df.pop("PayerRate") * 100
+        for day in (30, 90, 180):
+            export_df[f"D{day}ROAS%"] = export_df.pop(f"D{day}ROAS") * 100
+        st.download_button(
+            "Download sensitivity CSV",
+            data=export_df.to_csv(index=False),
+            file_name="growth_sensitivity.csv",
             mime="text/csv",
         )
 
