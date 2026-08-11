@@ -15,21 +15,21 @@ Game Growth Toolkit is moving from a single Streamlit prototype toward a reusabl
 
 ## Milestone 0.2 — Better forecasting
 
-- [ ] Compare power-law, exponential, and logarithmic retention models
+- [ ] Compare power-law, exponential, and logarithmic retention models — #2
 - [x] Report goodness-of-fit metrics
-- [ ] Add confidence intervals or scenario bands
+- [ ] Add confidence intervals or scenario bands — follow-up to #2
 - [x] Add D7 / D14 / D30 / D60 / D90 / D180 ROAS outputs
-- [ ] Add payer conversion timing and repeat-purchase assumptions
+- [ ] Add payer conversion timing and repeat-purchase assumptions — #5
 - [ ] Support ad-revenue scenarios
 
 ## Milestone 0.3 — Real growth workflows
 
 - [x] CSV cohort import
-- [ ] Import templates for common MMP / store exports
+- [ ] Import templates for common MMP / store exports — #4
 - [ ] Country comparison
 - [ ] Channel comparison
-- [ ] CPI break-even calculator
-- [ ] Sensitivity analysis for CPI, retention, payer rate, and ARPPU
+- [ ] CPI break-even calculator — #3
+- [ ] Sensitivity analysis for CPI, retention, payer rate, and ARPPU — #3
 - [ ] Exportable HTML reports
 - [x] Exportable forecast CSV
 
@@ -40,6 +40,13 @@ Game Growth Toolkit is moving from a single Streamlit prototype toward a reusabl
 - [ ] Notebook examples
 - [ ] Reproducible benchmark datasets
 - [ ] Contributor documentation for adding new models
+
+## Active issues
+
+- #2 — Compare retention models and expose model-selection evidence
+- #3 — Add CPI break-even and sensitivity analysis
+- #4 — Add cohort import templates for common mobile measurement exports
+- #5 — Model payer conversion timing and repeat purchases
 
 ## What success looks like
 
